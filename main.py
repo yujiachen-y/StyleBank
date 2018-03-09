@@ -19,7 +19,7 @@ from training_network import StyleBankNet, Discriminator
 IMAGE_SIZE = 256
 transform_list = []
 # (1) cut out the extra parts of pictures
-transform = transforms.Compose([transforms.Scale(IMAGE_SIZE),
+transform = transforms.Compose([transforms.Resize(IMAGE_SIZE),
                                 transforms.CenterCrop(IMAGE_SIZE),
                                 transforms.ToTensor(),
                                 tensor_normalizer()])

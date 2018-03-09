@@ -59,7 +59,6 @@ class ContentStyleDataset(Dataset):
             self.length += len(dataloader)
         self.dataloaders = dataloaders
         self.transform_list = transform_list
-        self.horizontal_flip = transforms.RandomHorizontalFlip(1)
 
     def __len__(self):
         return self.length
@@ -76,8 +75,8 @@ class ContentStyleDataset(Dataset):
         content_image, style_image =self.dataloaders[style_id-1][item]
 
         if np.random.rand() < 0.5:
-            content_image = self.horizontal_flip(content_image)
-            style_image = self.horizontal_flip(style_image)
+            content_image = content_image.transpose(Image.FLIP_LEFT_RIGHT)
+            style_image = style_image.transpose(Image.FLIP_LEFT_RIGHT)
         trans_id = np.random.randint(len(self.transform_list))
         content_image = self.transform_list[trans_id](content_image)
         style_image = self.transform_list[trans_id](style_image)
