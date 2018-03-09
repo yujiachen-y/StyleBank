@@ -60,7 +60,7 @@ class StyleBankNet(torch.nn.Module):
         if style_id is not None:
             # print 'using style mode ... ... ...'
             for i in range(len(style_id)):
-                tmp_out = getattr(self, 'style_bank'+str(int(style_id[i])))(out[i].unsqueeze(0))
+                tmp_out = getattr(self, 'style_bank'+str(int(style_id[i]-1)))(out[i].unsqueeze(0))
                 if new_out is not None:
                     new_out = torch.cat([new_out, tmp_out])
                 else:
@@ -92,24 +92,34 @@ class Discriminator(nn.Module):
 
         # Layers
         net = nn.Sequential(
-            # input is (nc) * 64 * 64
+            # input is (nc) * 256 * 256
             nn.ReflectionPad2d(1),
             nn.Conv2d(nc, ndf, 4, 2, 0),
             nn.LeakyReLU(NEGATIVE_SLOPE, True),
             nn.BatchNorm2d(ndf),
-            # state size. (ndf) * 32 * 32
+            # state size. (ndf) * 128 * 128
             nn.ReflectionPad2d(1),
             nn.Conv2d(ndf, ndf * 2, 4, 2, 0),
             nn.LeakyReLU(NEGATIVE_SLOPE, True),
             nn.BatchNorm2d(ndf * 2),
-            # state size. (ndf*2) * 16 * 16
+            # state size. (ndf*2) * 64 * 64
             nn.ReflectionPad2d(1),
             nn.Conv2d(ndf * 2, ndf * 4, 4, 2, 0),
             nn.LeakyReLU(NEGATIVE_SLOPE, True),
             nn.BatchNorm2d(ndf * 4),
-            # state size. (ndf*4) * 8 * 8
+            # state size. (ndf*4) * 32 * 32
             nn.ReflectionPad2d(1),
             nn.Conv2d(ndf * 4, ndf * 8, 4, 2, 0),
+            nn.LeakyReLU(NEGATIVE_SLOPE, True),
+            nn.BatchNorm2d(ndf * 8),
+            # state size. (ndf*8) * 16 * 16
+            nn.ReflectionPad2d(1),
+            nn.Conv2d(ndf * 8, ndf * 8, 4, 2, 0),
+            nn.LeakyReLU(NEGATIVE_SLOPE, True),
+            nn.BatchNorm2d(ndf * 8),
+            # state size. (ndf*8) * 8 * 8
+            nn.ReflectionPad2d(1),
+            nn.Conv2d(ndf * 8, ndf * 8, 4, 2, 0),
             nn.LeakyReLU(NEGATIVE_SLOPE, True),
             nn.BatchNorm2d(ndf * 8),
             # state size. (ndf * 4) * 4 * 4

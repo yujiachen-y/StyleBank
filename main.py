@@ -1,14 +1,16 @@
 import os
 import torch
 import torch.nn as nn
+from torch.autograd import Variable
 from torch.utils.data import DataLoader
 from torchvision import transforms
 from torch.optim.lr_scheduler import StepLR
 from torch.optim import Adam
+import time
 
 from dataloader import ImageLoader, ContentStyleDataset
-from utils import tensor_normalizer, ZeroPadding
-from loss_network import LossNetwork, get_content_loss, get_regularization_loss, get_style_loss
+from utils import tensor_normalizer, ZeroPadding, save_test_image
+from loss_network import LossNetwork, get_content_loss, get_regularization_loss, get_style_loss, mse_loss
 from training_network import StyleBankNet, Discriminator
 
 ##################################
@@ -31,7 +33,7 @@ transform_list.append(transform)
 ####################################
 # construct ImageLoaders and dataloader
 ####################################
-DATADIR = os.path.join('..', 'datasets')
+DATADIR = os.path.join('..', 'Datasets')
 BATCHSIZE = 4
 
 dataset_list = ['AR', 'CUHK', 'CUHK_FERET', 'XM2VTS',
@@ -52,6 +54,12 @@ netD = Discriminator()
 loss_network = LossNetwork()
 bce_loss = nn.BCELoss()
 
+use_gpu = torch.cuda.is_available()
+if use_gpu:
+    netG = netG.cuda()
+    netD = netD.cuda()
+    loss_network = loss_network.cuda()
+
 LR = 1e-2
 optimizerG = Adam(netG.parameters(), LR)
 optimizerD = Adam(netD.parameters(), LR)
@@ -60,6 +68,9 @@ scheduler = StepLR(optimizerG, step_size=30, gamma=0.2)
 netG.train()
 netD.train()
 
+######################
+# training the network
+######################
 CONTENT_WEIGHT = 100
 STYLE_WEIGHT = 10000
 REG_WEIGHT = 1e-5
@@ -75,7 +86,7 @@ for epoch in range(EPOCH):
     Loss_I, Loss_S, Loss_C, Loss_R = 0, 0, 0, 0
     scheduler.step()
 
-    for batch_id, (content_image, stylized_image, style_id) in enumerate(train_loader):
+    for batch_id, (style_id, content_image, stylized_image) in enumerate(dataloader):
 
         optimizerG.zero_grad()
         optimizerD.zero_grad()
@@ -87,7 +98,7 @@ for epoch in range(EPOCH):
         
         content_image = Variable(content_image)
         stylized_image = Variable(stylized_image)
-        if torch.cuda.is_available():
+        if use_gpu:
             content_image = content_image.cuda()
             stylized_image = stylized_image.cuda()
             label = label.cuda()
@@ -157,7 +168,7 @@ for epoch in range(EPOCH):
                 sizes += p
             norm_style = sums / sizes
             
-            optimizer.zero_grad()
+            optimizerG.zero_grad()
             
             output_image = netG(content_image)
             identity_loss = mse_loss(output_image, content_image)
@@ -177,12 +188,24 @@ for epoch in range(EPOCH):
                 if 'style' in param[0]: continue
                 param[1].grad = LAMBDA * norm_style / norm_encoder * param[1].grad 
 
-            optimizer.step()
+            optimizerG.step()
 
             Loss_I = Loss_I + identity_loss.data.mean()
 
         if batch_id % LOG_INTERVAL == 0:
-                print('[%d/%d][%d/%d] Loss_D: %.4f Loss_G: %.4f D(x): %.4f D(G(z)): %.4f / %.4f\nLoss_C: %.4f Loss_S: %.4f Loss_R: %.4f Loss_I: %.4f'
-                    % (epoch, EPOCH, batch_id, len(train_loader),
-                        Loss_D, Loss_G, Loss_D_x, Loss_D_G_z1, Loss_D_G_z2,
-                        Loss_C, Loss_S, Loss_R, Loss_I))
+            print('[%d/%d][%d/%d] Loss_D: %.4f Loss_G: %.4f D(x): %.4f D(G(z)): %.4f / %.4f\nLoss_C: %.4f Loss_S: %.4f Loss_R: %.4f Loss_I: %.4f'
+                % (epoch, EPOCH, batch_id, len(dataloader),
+                    Loss_D, Loss_G, Loss_D_x, Loss_D_G_z1, Loss_D_G_z2,
+                    Loss_C, Loss_S, Loss_R, Loss_I))
+            Loss_D, Loss_G, Loss_D_x, Loss_D_G_z1, Loss_D_G_z2 = 0, 0, 0, 0, 0
+            Loss_I, Loss_S, Loss_C, Loss_R = 0, 0, 0, 0
+
+            netG.eval()
+            output_image = netG(content_image, style_id)
+            save_test_image('result',
+                            '{}_{}_{}.png'.format(epoch, count, dataset_list[style_id[0]]),
+                            [content_image.data, stylized_image.data, output_image.data])
+            netG.train()
+
+        current_time = time.strftime('%Y_%m_%d_%H_%M', time.localtime())
+        torch.save(netG, os.path.join('models', current_time + '.pkl'))
