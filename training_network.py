@@ -1,16 +1,18 @@
 import torch
 import torch.nn as nn
-from torch.autograd import Variable
 import numpy as np
 
 
-class TransformerNet(torch.nn.Module):
+##################
+# (1) StyleBankNet
+##################
+class StyleBankNet(torch.nn.Module):
     def __init__(self, total_style):
         """
 
         :param total_style: the number of styles need to learn, total_style is 0 meaning is just a encoder and decoder network .
         """
-        super(TransformerNet, self).__init__()
+        super(StyleBankNet, self).__init__()
 
         self.total_style = total_style
 
@@ -34,7 +36,7 @@ class TransformerNet(torch.nn.Module):
 
         # style_bank
         # self.style_bank = ConvLayer(128, 128, kernel_size=3, stride=1)
-        for i in xrange(total_style):
+        for i in range(total_style):
             setattr(self, 'style_bank'+str(i), ConvLayer(128, 128, kernel_size=3, stride=1))
 
     def forward(self, X, style_id=None):
@@ -57,7 +59,7 @@ class TransformerNet(torch.nn.Module):
         new_out = None
         if style_id is not None:
             # print 'using style mode ... ... ...'
-            for i in xrange(len(style_id)):
+            for i in range(len(style_id)):
                 tmp_out = getattr(self, 'style_bank'+str(int(style_id[i])))(out[i].unsqueeze(0))
                 if new_out is not None:
                     new_out = torch.cat([new_out, tmp_out])
@@ -72,6 +74,57 @@ class TransformerNet(torch.nn.Module):
         return out
 
 
+###################
+# (2) Discriminator
+###################
+NEGATIVE_SLOPE = 0.2
+nc, ndf = 3, 64
+
+
+class Discriminator(nn.Module):
+    def __init__(self):
+
+        super(Discriminator, self).__init__()
+
+        # Non-linearity
+        self.relu = nn.ReLU(inplace=True)
+        self.lrelu = nn.LeakyReLU(0.2, inplace=True)
+
+        # Layers
+        net = nn.Sequential(
+            # input is (nc) * 64 * 64
+            nn.ReflectionPad2d(1),
+            nn.Conv2d(nc, ndf, 4, 2, 0),
+            nn.LeakyReLU(NEGATIVE_SLOPE, True),
+            nn.BatchNorm2d(ndf),
+            # state size. (ndf) * 32 * 32
+            nn.ReflectionPad2d(1),
+            nn.Conv2d(ndf, ndf * 2, 4, 2, 0),
+            nn.LeakyReLU(NEGATIVE_SLOPE, True),
+            nn.BatchNorm2d(ndf * 2),
+            # state size. (ndf*2) * 16 * 16
+            nn.ReflectionPad2d(1),
+            nn.Conv2d(ndf * 2, ndf * 4, 4, 2, 0),
+            nn.LeakyReLU(NEGATIVE_SLOPE, True),
+            nn.BatchNorm2d(ndf * 4),
+            # state size. (ndf*4) * 8 * 8
+            nn.ReflectionPad2d(1),
+            nn.Conv2d(ndf * 4, ndf * 8, 4, 2, 0),
+            nn.LeakyReLU(NEGATIVE_SLOPE, True),
+            nn.BatchNorm2d(ndf * 8),
+            # state size. (ndf * 4) * 4 * 4
+            nn.Conv2d(ndf * 8, 1, 4, 1, 0),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        y = self.net(x)
+        return y.view(-1, 1).squeeze(1)
+
+
+##################
+# (3) Other Layers
+##################
 class ConvLayer(torch.nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride):
         super(ConvLayer, self).__init__()
