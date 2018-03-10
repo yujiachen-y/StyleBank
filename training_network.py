@@ -35,9 +35,8 @@ class StyleBankNet(torch.nn.Module):
         self.deconv3 = ConvLayer(32, 3, kernel_size=9, stride=1)
 
         # style_bank
-        # self.style_bank = ConvLayer(128, 128, kernel_size=3, stride=1)
-        for i in range(total_style):
-            setattr(self, 'style_bank'+str(i), ConvLayer(128, 128, kernel_size=3, stride=1))
+        self.style_bank = nn.ModuleList([ConvLayer(128, 128, kernel_size=3, stride=1)
+                                         for i in range(total_style)])
 
     def forward(self, X, style_id=None):
         """
@@ -60,7 +59,7 @@ class StyleBankNet(torch.nn.Module):
         if style_id is not None:
             # print 'using style mode ... ... ...'
             for i in range(len(style_id)):
-                tmp_out = getattr(self, 'style_bank'+str(int(style_id[i]-1)))(out[i].unsqueeze(0))
+                tmp_out = self.style_bank[int(style_id[i]-1)](out[i].unsqueeze(0))
                 if new_out is not None:
                     new_out = torch.cat([new_out, tmp_out])
                 else:
@@ -159,7 +158,7 @@ class UpsampleConvLayer(torch.nn.Module):
         super(UpsampleConvLayer, self).__init__()
         self.upsample = upsample
         if upsample:
-            self.upsample_layer = torch.nn.UpsamplingNearest2d(scale_factor=upsample)
+            self.upsample_layer = torch.nn.Upsample(scale_factor=upsample, mode='nearest')
         reflection_padding = int(np.floor(kernel_size / 2))
         self.reflection_pad = nn.ReflectionPad2d(reflection_padding)
         self.conv2d = nn.Conv2d(in_channels, out_channels, kernel_size, stride)
