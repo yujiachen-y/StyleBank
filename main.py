@@ -29,7 +29,7 @@ transform = transforms.Compose([ZeroPadding(IMAGE_SIZE),
                                 transforms.ToTensor(),
                                 tensor_normalizer()])
 transform_list.append(transform)
-
+print('transforms done')
 ####################################
 # construct ImageLoaders and dataloader
 ####################################
@@ -44,7 +44,7 @@ imageloaders = [ImageLoader(os.path.join(DATADIR, dname, 'photos'),
 
 dataloader = DataLoader(ContentStyleDataset(imageloaders, transform_list),
                         batch_size=BATCHSIZE, shuffle=True, num_workers=4)
-
+print('dataloader done')
 ############################################################
 # instantiate neural networks, loss functions and optimizers
 ############################################################
@@ -67,7 +67,7 @@ scheduler = StepLR(optimizerG, step_size=30, gamma=0.2)
 
 netG.train()
 netD.train()
-
+print('networks done')
 ######################
 # training the network
 ######################
@@ -81,6 +81,8 @@ LAMBDA = 1
 
 count, t = 0, 0
 
+print('*' * 30)
+print('training...')
 for epoch in range(EPOCH):
     Loss_D, Loss_G, Loss_D_x, Loss_D_G_z1, Loss_D_G_z2 = 0, 0, 0, 0, 0
     Loss_I, Loss_S, Loss_C, Loss_R = 0, 0, 0, 0

@@ -91,7 +91,7 @@ class Discriminator(nn.Module):
         self.lrelu = nn.LeakyReLU(0.2, inplace=True)
 
         # Layers
-        net = nn.Sequential(
+        self.net = nn.Sequential(
             # input is (nc) * 256 * 256
             nn.ReflectionPad2d(1),
             nn.Conv2d(nc, ndf, 4, 2, 0),
