@@ -7,11 +7,19 @@ from torchvision import transforms
 from torch.optim.lr_scheduler import StepLR
 from torch.optim import Adam
 import time
+import numpy as np
 
 from dataloader import ImageLoader, ContentStyleDataset
 from utils import tensor_normalizer, ZeroPadding, save_test_image
 from loss_network import LossNetwork, get_content_loss, get_regularization_loss, get_style_loss, mse_loss
 from training_network import StyleBankNet, Discriminator
+
+######################################################################
+# set a SEED for random first so that we can get a reproducible result
+######################################################################
+SEED = 1080
+np.random.seed(SEED)
+torch.manual_seed(SEED)
 
 ##################################
 # build transforms for ImageLoader
