@@ -13,16 +13,15 @@ class ZeroPadding(object):
 
     def __call__(self, old_im):
         w, h = old_im.size
-        mx = max(w, h)
+        mx = max(w, h) * 1.
         radio = self.output_size / mx
-        new_size = w * radio, h * radio
+        new_size = int(w * radio), int(h * radio)
         old_im.thumbnail(new_size, Image.ANTIALIAS)
 
         new_im = Image.new('RGB', (self.output_size, self.output_size))
-        new_im.paste(old_im, ((self.output_size - new_size[0])/2,
-                              (self.output_size - new_size[1])/2))
+        new_im.paste(old_im, (int((self.output_size - new_size[0])/2),
+                              int((self.output_size - new_size[1])/2)))
         return new_im
-
 
 def tensor_normalizer():
     return transforms.Normalize(
