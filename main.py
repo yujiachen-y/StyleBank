@@ -50,8 +50,8 @@ imageloaders = [ImageLoader(os.path.join(DATADIR, dname, 'photos'),
                             os.path.join(DATADIR, dname, 'sketches'))
                 for dname in dataset_list]
 
-dataloader = DataLoader(ContentStyleDataset(imageloaders, transform_list),
-                        batch_size=BATCHSIZE, shuffle=True, num_workers=4)
+cs_dataset = ContentStyleDataset(imageloaders, transform_list)
+dataloader = DataLoader(cs_dataset, batch_size=BATCHSIZE, shuffle=True, num_workers=4)
 print('dataloader done')
 ############################################################
 # instantiate neural networks, loss functions and optimizers
@@ -214,11 +214,19 @@ for epoch in range(EPOCH):
             Loss_I, Loss_S, Loss_C, Loss_R = 0, 0, 0, 0
 
             netG.eval()
-            output_image = netG(content_image, style_id)
-            save_test_image('result',
-                            '{}_{}_{}.png'.format(epoch, count, dataset_list[style_id[0]-1]),
-                            [content_image.data, stylized_image.data, output_image.data])
+            cs_dataset.test()
+            _, content_image, _ = cs_dataset.random_sample()
+            content_image = content_image.unsqueeze(0)
+            if use_gpu:
+                content_image = content_image.cuda()
+            content_image = Variable(content_image)
+            images = [content_image.data]
+            for i in range(len(dataset_list)):
+                images.append(netG(content_image, i+1).data)
+            save_test_image('result', '{}_{}.png'.format(epoch, count),
+                            images, ['original'] + dataset_list)
             netG.train()
+            cs_dataset.train()
 
         current_time = time.strftime('%Y_%m_%d_%H_%M', time.localtime())
         torch.save(netG, os.path.join('models', current_time + '.pkl'))

@@ -14,9 +14,10 @@ data_dir = 'datasets'
 # (1) ImageLoader
 ##################
 class ImageLoader(object):
-    def __init__(self, content_dir, style_dir):
+    def __init__(self, content_dir, style_dir, train_size = 0.8):
         assert os.path.isdir(content_dir) and os.path.isdir(style_dir)
 
+        self.mode = 'train'
         self.content_dir, self.style_dir = content_dir, style_dir
         length1, length2 = 0, 0
         content_list, style_list = [], []
@@ -33,20 +34,37 @@ class ImageLoader(object):
                 style_list.append(file)
 
         assert length1 == length2
-        self.length = length1
         self.content_list, self.style_list = content_list, style_list
 
+        self._all_indexes = {}
+        arr = np.arange(length1)
+        np.random.shuffle(arr)
+        self._all_indexes['train'], self._all_indexes['test'] = \
+            np.split(arr, (int(length1 * train_size), ))
+        self.indexes = self._all_indexes[self.mode]
+
     def __len__(self):
-        return self.length
+        return len(self.indexes)
 
     def __getitem__(self, item):
-        assert 0 <= item < self.length
+        assert 0 <= item < self.__len__()
+        item = self.indexes[item]
         content_image_dir = os.path.join(self.content_dir,
                                          self.content_list[item])
-        style_image_dir = os.path.join(self.style_dir, self.style_list[item])
         content_image = Image.open(content_image_dir).convert('RGB')
+        style_image_dir = os.path.join(self.style_dir, self.style_list[item])
         style_image = Image.open(style_image_dir).convert('RGB')
         return content_image, style_image
+
+    def _change_mode(self, mode):
+        self.mode = mode
+        self.indexes = self._all_indexes[mode]
+
+    def train(self):
+        self._change_mode('train')
+
+    def test(self):
+        self._change_mode('test')
 
 
 ####################################
@@ -54,17 +72,23 @@ class ImageLoader(object):
 ####################################
 class ContentStyleDataset(Dataset):
     def __init__(self, dataloaders, transform_list):
-        self.length = 0
-        for dataloader in dataloaders:
-            self.length += len(dataloader)
+        self._length = {}
+        for mode in ['train', 'test']:
+            self._length[mode] = 0
+            for dataloader in dataloaders:
+                dataloader._change_mode(mode)
+                self._length[mode] += len(dataloader)
         self.dataloaders = dataloaders
         self.transform_list = transform_list
 
+        self.mode = 'train'
+        self.train()
+
     def __len__(self):
-        return self.length
+        return self._length[self.mode]
 
     def __getitem__(self, item):
-        assert 0 <= item < self.length
+        assert 0 <= item < self.__len__()
         style_id = 1
         for dataloader in self.dataloaders:
             if item >= len(dataloader):
@@ -81,6 +105,22 @@ class ContentStyleDataset(Dataset):
         content_image = self.transform_list[trans_id](content_image)
         style_image = self.transform_list[trans_id](style_image)
         return style_id, content_image, style_image
+
+    def _change_mode(self, mode):
+        self.mode = mode
+        for dataloader in self.dataloaders:
+            dataloader._change_mode(mode)
+
+    def train(self):
+        self._change_mode('train')
+
+    def test(self):
+        self._change_mode('test')
+
+    def random_sample(self):
+        assert self.mode == 'test'
+        item = np.random.randint(self.__len__())
+        return self.__getitem__(item)
 
 
 # class CocoDataset(Dataset):
