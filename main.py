@@ -81,7 +81,7 @@ LAMBDA = 1
 
 count, t = 0, 0
 
-print('*' * 30)
+print('*' * 100)
 print('training...')
 for epoch in range(EPOCH):
     Loss_D, Loss_G, Loss_D_x, Loss_D_G_z1, Loss_D_G_z2 = 0, 0, 0, 0, 0
@@ -111,6 +111,9 @@ for epoch in range(EPOCH):
 
         #############################################################
         # (1) Update D network: maximize log(D(x)) + log(1 - D(G(z)))
+        # the Discriminator training part is referenced from
+        # https://github.com/pytorch/examples/blob/master/dcgan/main.py
+        # at 2018/3/6
         #############################################################
 
         # train with real
@@ -135,7 +138,7 @@ for epoch in range(EPOCH):
         labelv = Variable(label.fill_(1)) # G want to generator real pictures
         p_fake_true = netD(output_image)
         errG = bce_loss(p_fake_true, labelv)
-        errG.backward()
+        # errG will backward later
         Loss_D_G_z2 = Loss_D_G_z2 + p_fake_true.data.mean()
         optimizerG.step()
 
@@ -146,7 +149,7 @@ for epoch in range(EPOCH):
         style_loss = STYLE_WEIGHT * get_style_loss(loss_network, stylized_image, output_features)
         reg_loss = REG_WEIGHT * get_regularization_loss(output_image)
 
-        total_loss = content_loss + style_loss + reg_loss
+        total_loss = content_loss + style_loss + reg_loss + errG
         total_loss.backward()
         optimizerG.step()
 
