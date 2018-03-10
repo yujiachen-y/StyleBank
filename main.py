@@ -208,7 +208,7 @@ for epoch in range(EPOCH):
             netG.eval()
             output_image = netG(content_image, style_id)
             save_test_image('result',
-                            '{}_{}_{}.png'.format(epoch, count, dataset_list[style_id[0]]),
+                            '{}_{}_{}.png'.format(epoch, count, dataset_list[style_id[0]-1]),
                             [content_image.data, stylized_image.data, output_image.data])
             netG.train()
 
