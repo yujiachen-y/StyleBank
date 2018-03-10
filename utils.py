@@ -1,5 +1,8 @@
+from __future__ import division
+
 import os
 import numpy as np
+import matplotlib.pyplot as plt
 from PIL import Image
 from torchvision import transforms
 
@@ -41,7 +44,7 @@ def recover_image(img):
     ).clip(0, 255).astype(np.uint8)
 
 
-def save_test_image(dir, file_name, images):
+def save_test_image(dir, file_name, images, titles):
     if not os.path.exists(dir) :
         os.makedirs(dir)
 
@@ -49,13 +52,16 @@ def save_test_image(dir, file_name, images):
         images[i] = Image.fromarray(recover_image(images[i].cpu().numpy())[0])
 
     num = len(images)
-    w, h = images[0].size[: 2]
-    result = Image.new('RGB', (w * num + 5 * (num - 1), h))
+    row = 2
+    col = (num + 1) // row
 
-    for i, image in enumerate(images):
-        result.paste(image, (i * (5 + w), 0))
-
-    result.save(os.path.join(dir, file_name))
+    plt.figure()
+    for i, image, title in enumerate(zip(images, titles)):
+        plt.subplot(row, col, i)
+        plt.axis('off')
+        plt.title(title)
+        plt.imshow(image)
+    plt.savefig(os.path.join(dir, file_name))
 
 
 ########
