@@ -90,7 +90,8 @@ LAMBDA = 1
 count, t = 0, 0
 
 current_time = time.strftime('%Y_%m_%d_%H_%M', time.localtime())
-print('\ntraining start at', current_time)
+print()
+print('training start at', current_time)
 
 result_dir = 'result_' + current_time
 os.mkdir(result_dir)
@@ -239,6 +240,7 @@ for epoch in range(EPOCH):
             netG.train()
             cs_dataset.train()
 
-print('\ntraining end at', time.strftime('%Y_%m_%d_%H_%M', time.localtime()))
+print()
+print('training end at', time.strftime('%Y_%m_%d_%H_%M', time.localtime()))
 current_time = time.strftime('%Y_%m_%d_%H_%M', time.localtime())
 torch.save(netG, os.path.join('models', current_time + '.pkl'))

@@ -55,12 +55,13 @@ def save_test_image(dir, file_name, images, titles):
     row = 2
     col = (num + 1) // row
 
-    plt.figure()
+    plt.figure(figsize=(12, 6))
     for i, (image, title) in enumerate(zip(images, titles)):
-        plt.subplot(row, col, i)
+        plt.subplot(row, col, i+1)
         plt.axis('off')
         plt.title(title)
         plt.imshow(image)
+    plt.tight_layout()
     plt.savefig(os.path.join(dir, file_name))
 
 
