@@ -89,7 +89,11 @@ LAMBDA = 1
 
 count, t = 0, 0
 
-print('\ntraining start at', time.strftime('%Y_%m_%d_%H_%M', time.localtime()))
+current_time = time.strftime('%Y_%m_%d_%H_%M', time.localtime())
+print('\ntraining start at', current_time)
+
+result_dir = 'result_' + current_time
+os.mkdir(result_dir)
 for epoch in range(EPOCH):
     Loss_D, Loss_G, D_x, D_G_z1, D_G_z2 = 0, 0, 0, 0, 0
     Loss_I, Loss_S, Loss_C, Loss_R = 0, 0, 0, 0
@@ -221,15 +225,16 @@ for epoch in range(EPOCH):
             netG.eval()
             cs_dataset.test()
             _, content_image, stylized_image = cs_dataset.random_sample()
-            content_image = content_image.unsqueeze(0)
+            # content_image = content_image.unsqueeze(0)
             if use_gpu:
                 content_image = content_image.cuda()
                 stylized_image = stylized_image.cuda()
             content_image = Variable(content_image)
+            stylized_image = Variable(stylized_image)
             images = [content_image.data, stylized_image.data]
             for i in range(len(dataset_list)):
                 images.append(netG(content_image, i+1).data)
-            save_test_image('result', '%04d_%05d.png'%(epoch, count),
+            save_test_image(result_dir, '%04d_%05d.png'%(epoch, count),
                             images, ['original', 'stylized'] + dataset_list)
             netG.train()
             cs_dataset.train()

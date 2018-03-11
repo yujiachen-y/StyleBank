@@ -56,7 +56,7 @@ def save_test_image(dir, file_name, images, titles):
     col = (num + 1) // row
 
     plt.figure()
-    for i, image, title in enumerate(zip(images, titles)):
+    for i, (image, title) in enumerate(zip(images, titles)):
         plt.subplot(row, col, i)
         plt.axis('off')
         plt.title(title)
