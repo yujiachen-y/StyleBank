@@ -89,20 +89,21 @@ LAMBDA = 1
 
 count, t = 0, 0
 
-print('*' * 100)
-print('training...')
+print('\ntraining start at', time.strftime('%Y_%m_%d_%H_%M', time.localtime()))
 for epoch in range(EPOCH):
-    Loss_D, Loss_G, Loss_D_x, Loss_D_G_z1, Loss_D_G_z2 = 0, 0, 0, 0, 0
+    Loss_D, Loss_G, D_x, D_G_z1, D_G_z2 = 0, 0, 0, 0, 0
     Loss_I, Loss_S, Loss_C, Loss_R = 0, 0, 0, 0
+    epoch_count = 0
+
     scheduler.step()
 
     for batch_id, (style_id, content_image, stylized_image) in enumerate(dataloader):
-
         optimizerG.zero_grad()
         optimizerD.zero_grad()
         
         batch_size = len(style_id)
         count += batch_size
+        epoch_count += batch_size
 
         label = torch.FloatTensor(batch_size).fill_(1)
         
@@ -128,15 +129,14 @@ for epoch in range(EPOCH):
         p_real = netD(stylized_image)
         errD_real = bce_loss(p_real, labelv)
         errD_real.backward()
-        D_x = p_real.data.mean()
+        D_x = D_x + p_real.data.mean()
 
         # train with fake
         labelv = Variable(label.fill_(0))
         p_fake = netD(output_image.detach())
         errD_fake = bce_loss(p_fake, labelv)
         errD_fake.backward()
-        Loss_D_G_z1 = Loss_D_G_z1 + p_fake.data.mean()
-
+        D_G_z1 = D_G_z1 + p_fake.data.mean()
         Loss_D = Loss_D + errD_fake.data.mean() + errD_real.data.mean()
         optimizerD.step()
 
@@ -147,7 +147,8 @@ for epoch in range(EPOCH):
         p_fake_true = netD(output_image)
         errG = bce_loss(p_fake_true, labelv)
         # errG will backward later
-        Loss_D_G_z2 = Loss_D_G_z2 + p_fake_true.data.mean()
+        D_G_z2 = D_G_z2 + p_fake_true.data.mean()
+        Loss_G = Loss_G + errG
         optimizerG.step()
 
         ##################################################################
@@ -186,6 +187,7 @@ for epoch in range(EPOCH):
             output_image = netG(content_image)
             identity_loss = mse_loss(output_image, content_image)
             identity_loss.backward()
+            Loss_I = Loss_I + identity_loss.data.mean()
             
             sizes,sums = 0.,0.
             for param in netG.named_parameters():
@@ -203,30 +205,35 @@ for epoch in range(EPOCH):
 
             optimizerG.step()
 
-            Loss_I = Loss_I + identity_loss.data.mean()
-
         if batch_id % LOG_INTERVAL == 0:
+            Loss_D, Loss_G, D_x, D_G_z1, D_G_z2 = [x / epoch_count
+                                                   for x in (Loss_D, Loss_G, D_x, D_G_z1, D_G_z2)]
+            Loss_I, Loss_S, Loss_C, Loss_R = [x / epoch_count
+                                              for x in (Loss_I, Loss_S, Loss_C, Loss_R)]
             print('[%d/%d][%d/%d] Loss_D: %.4f Loss_G: %.4f D(x): %.4f D(G(z)): %.4f / %.4f\nLoss_C: %.4f Loss_S: %.4f Loss_R: %.4f Loss_I: %.4f'
                 % (epoch, EPOCH, batch_id, len(dataloader),
-                    Loss_D, Loss_G, Loss_D_x, Loss_D_G_z1, Loss_D_G_z2,
-                    Loss_C, Loss_S, Loss_R, Loss_I))
-            Loss_D, Loss_G, Loss_D_x, Loss_D_G_z1, Loss_D_G_z2 = 0, 0, 0, 0, 0
+                   Loss_D, Loss_G, D_x, D_G_z1, D_G_z2,
+                   Loss_C, Loss_S, Loss_R, Loss_I))
+            Loss_D, Loss_G, D_x, D_G_z1, D_G_z2 = 0, 0, 0, 0, 0
             Loss_I, Loss_S, Loss_C, Loss_R = 0, 0, 0, 0
+            epoch_count = 0
 
             netG.eval()
             cs_dataset.test()
-            _, content_image, _ = cs_dataset.random_sample()
+            _, content_image, stylized_image = cs_dataset.random_sample()
             content_image = content_image.unsqueeze(0)
             if use_gpu:
                 content_image = content_image.cuda()
+                stylized_image = stylized_image.cuda()
             content_image = Variable(content_image)
-            images = [content_image.data]
+            images = [content_image.data, stylized_image.data]
             for i in range(len(dataset_list)):
                 images.append(netG(content_image, i+1).data)
-            save_test_image('result', '{}_{}.png'.format(epoch, count),
-                            images, ['original'] + dataset_list)
+            save_test_image('result', '%04d_%05d.png'%(epoch, count),
+                            images, ['original', 'stylized'] + dataset_list)
             netG.train()
             cs_dataset.train()
 
-        current_time = time.strftime('%Y_%m_%d_%H_%M', time.localtime())
-        torch.save(netG, os.path.join('models', current_time + '.pkl'))
+print('\ntraining end at', time.strftime('%Y_%m_%d_%H_%M', time.localtime()))
+current_time = time.strftime('%Y_%m_%d_%H_%M', time.localtime())
+torch.save(netG, os.path.join('models', current_time + '.pkl'))
