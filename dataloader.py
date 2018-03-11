@@ -39,6 +39,9 @@ class ImageLoader(object):
         self._all_indexes = {}
         arr = np.arange(length1)
         np.random.shuffle(arr)
+        if length1 > 300:
+            length1 = 300
+            arr = arr[:length1]
         self._all_indexes['train'], self._all_indexes['test'] = \
             np.split(arr, (int(length1 * train_size), ))
         self.indexes = self._all_indexes[self.mode]
